@@ -1,5 +1,5 @@
 [project]
-name = "release-tools"
+name = "gh_release_tools"
 version = "0.1.0"
 description = "Tools for data wrangling in github releases"
 readme = "README.md"
