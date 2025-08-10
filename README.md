@@ -1,4 +1,4 @@
-# Release Tools [![PyPI - Latest Version](https://img.shields.io/pypi/v/release_tools)](https://pypi.org/project/release_tools/) [![GitHub Tag](https://img.shields.io/github/v/tag/ramSeraph/release_tools?filter=v*)](https://github.com/ramSeraph/release_tools/releases/latest)
+# Release Tools [![PyPI - Latest Version](https://img.shields.io/pypi/v/gh_release_tools)](https://pypi.org/project/release_tools/) [![GitHub Tag](https://img.shields.io/github/v/tag/ramSeraph/release_tools?filter=v*)](https://github.com/ramSeraph/release_tools/releases/latest)
 
 This project provides a set of tools for managing files in GitHub releases. This assumes that `gh` (the GitHub CLI) is installed and configured on your system, as it is used to interact with GitHub releases.
 
@@ -27,8 +27,8 @@ It is recommended to run the tools using `uvx` to avoid dependency conflicts wit
 ### `uvx`
 
 ```bash
-uvx release_tools generate-lists <release_base> <extension>
-uvx release_tools upload-to-release <tag> <folder> <extension_without_the_leading_dot> [yes_to_overwrite]
+uvx --from gh_release_tools generate-lists <release_base> <extension>
+uvx --from gh_release_tools upload-to-release <tag> <folder> <extension_without_the_leading_dot> [yes_to_overwrite]
 ```
 
 ### `generate-lists`
