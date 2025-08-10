@@ -1,4 +1,4 @@
-# Release Tools [![PyPI - Latest Version](https://img.shields.io/pypi/v/gh_release_tools)](https://pypi.org/project/release_tools/) [![GitHub Tag](https://img.shields.io/github/v/tag/ramSeraph/release_tools?filter=v*)](https://github.com/ramSeraph/release_tools/releases/latest)
+# Release Tools [![PyPI - Latest Version](https://img.shields.io/pypi/v/gh_release_tools)](https://pypi.org/project/gh_release_tools/) [![GitHub Tag](https://img.shields.io/github/v/tag/ramSeraph/release_tools?filter=v*)](https://github.com/ramSeraph/release_tools/releases/latest)
 
 This project provides a set of tools for managing files in GitHub releases. This assumes that `gh` (the GitHub CLI) is installed and configured on your system, as it is used to interact with GitHub releases.
 
