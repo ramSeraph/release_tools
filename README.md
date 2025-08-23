@@ -29,7 +29,7 @@ It is recommended to run the tools using `uvx` to avoid dependency conflicts wit
 ### `uvx`
 
 ```bash
-uvx --from gh_release_tools generate-lists --release_base <release_base> --extension <extension>
+uvx --from gh_release_tools generate-lists --release <tag> --extension <extension>
 uvx --from gh_release_tools upload-to-release --release <tag> --folder <folder> --extension <extension> [--overwrite] [--create-extra-releases]
 ```
 
@@ -40,18 +40,18 @@ This tool generates a CSV file named `listing_files.csv` containing a list of as
 **Usage:**
 
 ```bash
-generate-lists --release_base <release_base> --extension <ext1> [--extension <ext2> ...]
+generate-lists --release <tag> --extension <ext1> [--extension <ext2> ...]
 ```
 
 **Arguments:**
 
-- `--release_base`, `-r`: The base name of the GitHub release (e.g., `v1.0.0`).
+- `--release`, `-r`: The base name of the GitHub release (e.g., `v1.0.0`).
 - `--extension`, `-e`: The file extension of the assets to include in the list (e.g., `.zip`). This argument can be specified multiple times for different extensions.
 
 **Example:**
 
 ```bash
-generate-lists --release_base v1.0.0 --extension .zip --extension .txt
+generate-lists --release v1.0.0 --extension .zip --extension .txt
 ```
 
 This command will generate a `listing_files.csv` file with a list of all `.zip` and `.txt` files from the `v1.0.0` release and any releases named `v1.0.0-extra<number>`.

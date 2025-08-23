@@ -26,7 +26,7 @@ def get_assets(release, ext):
 def cli():
     """Main function to generate file lists and upload to release."""
     parser = argparse.ArgumentParser(description='Generate file lists and upload to a GitHub release.')
-    parser.add_argument('--release_base', '-r', required=True, help='The base name of the release.')
+    parser.add_argument('--release', '-r', required=True, help='The base name of the release.')
     parser.add_argument('--extension', '-e', action='append', help='File extension to filter assets by.')
     args = parser.parse_args()
 
@@ -36,7 +36,7 @@ def cli():
 
 
     print("Getting file list")
-    release_map = get_release_map(args.release_base)
+    release_map = get_release_map(args.release)
     releases_to_process = list(release_map.values())
     
     if not releases_to_process:
@@ -65,10 +65,10 @@ def cli():
         for asset_line in all_assets:
             csv_writer.writerow(asset_line.split(',', 2))
 
-    print(f"Uploading {csv_file} to release {args.release_base}")
+    print(f"Uploading {csv_file} to release {args.release}")
     try:
         subprocess.run(
-            ['gh', 'release', 'upload', args.release_base, str(csv_file), '--clobber'],
+            ['gh', 'release', 'upload', args.release, str(csv_file), '--clobber'],
             check=True
         )
     except subprocess.CalledProcessError as e:
