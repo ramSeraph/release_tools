@@ -37,9 +37,6 @@ jobs:
 
       - name: Build the project
         run: |
-            version=${{ github.ref_name }}
-            version=${version#v}
-            export SETUPTOOLS_SCM_PRETEND_VERSION=$version
             uv build
 
       - name: Publish distribution 
