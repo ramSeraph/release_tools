@@ -182,12 +182,17 @@ def cli():
     for ext in args.extension or []:
         files_to_upload += sorted(list(args.folder.glob(f"*{ext}")))
 
-    for file_path in files_to_upload:
+    total_files = len(files_to_upload)
+    newly_uploaded_count = 0
+    skipped_count = 0
+    overwritten_count = 0
+
+    for i, file_path in enumerate(files_to_upload, 1):
         available_releases = release_mapper.get_available_releases()
 
         filename = file_path.name
 
-        print(f"Processing file: {filename}")
+        print(f"[{i}/{total_files}] Processing file: {filename}")
 
         release = release_mapper.get_release_for_asset(filename)
 
@@ -195,8 +200,10 @@ def cli():
             if args.overwrite:
                 print(f"  -> Overwriting '{filename}' in release '{release}'...")
                 upload_asset(release, file_path, clobber=True)
+                overwritten_count += 1
             else:
                 print(f"  -> Skipping '{filename}', it already exists in release '{release}'.")
+                skipped_count += 1
 
             continue
 
@@ -214,8 +221,15 @@ def cli():
         print(f"  -> Uploading '{filename}' to '{upload_target}'...")
         upload_asset(upload_target, file_path)
         release_mapper.add_asset(filename, upload_target)
+        newly_uploaded_count += 1
 
     print("Upload process complete.")
+    print()
+    print("--- Summary ---")
+    print(f"Total files:           {total_files}")
+    print(f"Files newly uploaded:  {newly_uploaded_count}")
+    print(f"Files skipped:         {skipped_count}")
+    print(f"Files overwritten:     {overwritten_count}")
 
 
 
