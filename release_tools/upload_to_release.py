@@ -90,7 +90,7 @@ def create_release(next_num, main_tag):
     main_release_title = get_release_title(main_tag)
     main_release_url = f"https://github.com/{repo_name}/releases/tag/{main_tag}"
 
-    new_release_title = f"{main_release_title} Supplementary{next_num})"
+    new_release_title = f"{main_release_title} Supplementary{next_num}"
     listing_files_url = f"https://github.com/{repo_name}/releases/download/{main_tag}/listing_files.csv"
 
     try:
