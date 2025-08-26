@@ -59,7 +59,7 @@ def cli():
         return
         
     csv_file = Path('listing_files.csv')
-    with open(csv_file, 'w', newline='') as csvfile:
+    with open(csv_file, 'w') as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerow(['name', 'size', 'url'])
         for asset_line in all_assets:
