@@ -12,7 +12,7 @@ def get_assets(release, ext):
         result = subprocess.run(
             [
                 'gh', 'release', 'view', release, '--json', 'assets',
-                '-q', f".assets[] | select(.name | endswith(\"{ext}\")) | \"\(.name),\(.size),\(.url)\""
+                '-q', f".assets[] | select(.name | endswith(\"{ext}\")) | \"\\(.name),\\(.size),\\(.url)\""
             ],
             capture_output=True,
             text=True,
