@@ -180,7 +180,7 @@ def cli():
 
     files_to_upload = []
     for ext in args.extension or []:
-        files_to_upload += sorted(list(args.folder.glob(f"*{args.extension}")))
+        files_to_upload += sorted(list(args.folder.glob(f"*{ext}")))
 
     for file_path in files_to_upload:
         available_releases = release_mapper.get_available_releases()
