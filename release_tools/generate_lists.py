@@ -1,27 +1,25 @@
 import argparse
 import subprocess
-import os
 import csv
+import sys
 from pathlib import Path
 
-from .utils import get_release_map
+from .utils import command_exists, get_release_map, run_command
 
 def get_assets(release, ext):
-    """Get assets for a given release and filter by extension."""
-    try:
-        result = subprocess.run(
-            [
-                'gh', 'release', 'view', release, '--json', 'assets',
-                '-q', f".assets[] | select(.name | endswith(\"{ext}\")) | \"\\(.name),\\(.size),\\(.url)\""
-            ],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        print(f"Error getting assets for release {release}: {e}")
-        return None
+    """Get all assets with a given extension for a given release."""
+    output = run_command([
+        'gh',
+        'release',
+        'view',
+        release,
+        '--json',
+        'assets',
+        '-q',
+        f'.assets[] | select(.name | endswith("{ext}")) | "\\(.name),\\(.size),\\(.url)"'
+    ])
+    return output.strip()
+
 
 def cli():
     """Main function to generate file lists and upload to release."""
@@ -30,18 +28,21 @@ def cli():
     parser.add_argument('--extension', '-e', action='append', help='File extension to filter assets by.')
     args = parser.parse_args()
 
-    if not args.extension:
-        print("No file extensions provided. Please specify at least one extension using --extension.")
-        return
+    if not command_exists("gh"):
+        print("Error: gh command-line tool is not installed. Please install it to continue.", file=sys.stderr)
+        return 1
 
+    if not args.extension:
+        print("No file extensions provided. Please specify at least one extension using --extension.", file=sys.stderr)
+        return 1
 
     print("Getting file list")
     release_map = get_release_map(args.release)
     releases_to_process = list(release_map.values())
     
     if not releases_to_process:
-        print("No releases found to process.")
-        return
+        print("No releases found to process.", file=sys.stderr)
+        return 1
 
     print(f"Will process releases: {releases_to_process}")
 
@@ -52,13 +53,14 @@ def cli():
             assets = get_assets(release, ext)
             if assets:
                 # Filter out empty strings that can result from split('\n')
-                all_assets.extend([line for line in assets.split('\n') if line])
+                all_assets.extend([line.strip() for line in assets.split('\n') if line.strip()])
 
     if not all_assets:
         print("No assets found to process.")
-        return
+        return 0
         
     csv_file = Path('listing_files.csv')
+
     with open(csv_file, 'w') as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerow(['name', 'size', 'url'])
@@ -66,15 +68,11 @@ def cli():
             csv_writer.writerow(asset_line.split(',', 2))
 
     print(f"Uploading {csv_file} to release {args.release}")
-    try:
-        subprocess.run(
-            ['gh', 'release', 'upload', args.release, str(csv_file), '--clobber'],
-            check=True
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Error uploading file to release: {e}")
-    finally:
-        csv_file.unlink()
+    run_command(['gh', 'release', 'upload', args.release, str(csv_file), '--clobber'])
+
+    csv_file.unlink()
+            
+    return 0
 
 if __name__ == '__main__':
-    cli()
+    sys.exit(cli())

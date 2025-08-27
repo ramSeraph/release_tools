@@ -3,10 +3,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .utils import get_release_map
+from .utils import command_exists, get_release_map, get_asset_names
 
-def command_exists(cmd):
-    return subprocess.run(f"command -v {cmd}", shell=True, capture_output=True, text=True).returncode == 0
+class CliError(Exception):
+    pass
 
 FIRST_RELEASE_MAX_ASSETS = 988
 OTHER_RELEASE_MAX_ASSETS = 998
@@ -65,8 +65,7 @@ def get_repo_name():
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        print(f"Error getting repository name: {e.stderr}", file=sys.stderr)
-        sys.exit(1)
+        raise CliError(f"Error getting repository name: {e.stderr}")
 
 def get_release_title(tag):
     try:
@@ -78,12 +77,9 @@ def get_release_title(tag):
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        print(f"Error getting release title for tag {tag}: {e.stderr}", file=sys.stderr)
-        sys.exit(1)
-
+        raise CliError(f"Error getting release title for tag {tag}: {e.stderr}")
 
 def create_release(next_num, main_tag):
-
     new_release = f"{main_tag}-extra{next_num}"
     print(f"Creating new release '{new_release}'...")
     repo_name = get_repo_name()
@@ -102,136 +98,9 @@ def create_release(next_num, main_tag):
         )
         print(f"Created release: {new_release}")
     except subprocess.CalledProcessError as e:
-        print(f"Error creating release: {e.stderr}", file=sys.stderr)
-        sys.exit(1)
+        raise CliError(f"Error creating release: {e.stderr}")
 
     return new_release
-
-def get_existing_assets(release):
-    print(f"Fetching assets from release: {release}")
-
-    assets = []
-    try:
-        result = subprocess.run(
-            ["gh", "release", "view", release, "--json", "assets", "-q", ".assets[].name"],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            for asset_name in result.stdout.strip().split('\n'):
-                if asset_name:
-                    assets.append(asset_name)
-    except subprocess.CalledProcessError:
-        # This can happen if a release has no assets
-        pass
-
-    return assets
-
-
-
-def cli():
-    parser = argparse.ArgumentParser(
-        description="Upload files to a GitHub release, skipping existing files.",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument("--release", '-r', help="The git tag of the release to upload to.")
-    parser.add_argument("--folder", '-d', help="The local folder containing the files to upload.", type=Path)
-    parser.add_argument("--extension", '-e', action='append', help="The extension of the files to upload.")
-    parser.add_argument("--create-extra-releases", "-x", action="store_true", help="Create extra releases if needed.")
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Allow overwriting existing assets.",
-    )
-    args = parser.parse_args()
-
-    if not command_exists("gh"):
-        print("Error: gh command-line tool is not installed. Please install it to continue.", file=sys.stderr)
-        sys.exit(1)
-
-    if not args.folder.is_dir():
-        print(f"Error: Folder '{args.folder}' not found.", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Fetching existing assets for releases matching pattern '{args.release}(-extra[0-9]+)?'...")
-
-    release_map = get_release_map(args.release)
-    releases_to_process = list(release_map.values())
-
-    if not releases_to_process:
-        print(f"Error: No releases found matching pattern '{args.tag}(-extra[0-9]+)?'.", file=sys.stderr)
-        sys.exit(1)
-
-    if args.release not in releases_to_process:
-        print(f"Error: Specified main release '{args.release}' not found among fetched releases.", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Found releases: {', '.join(releases_to_process)}")
-
-    release_mapper = ReleaseMapper(args.release)
-
-    for rel in releases_to_process:
-        release_mapper.add_release(args.release)
-        assets = get_existing_assets(rel)
-        for asset in assets:
-            release_mapper.add_asset(asset, rel)
-
-    print(f"Starting upload process from folder '{args.folder}'...")
-
-    files_to_upload = []
-    for ext in args.extension or []:
-        files_to_upload += sorted(list(args.folder.glob(f"*{ext}")))
-
-    total_files = len(files_to_upload)
-    newly_uploaded_count = 0
-    skipped_count = 0
-    overwritten_count = 0
-
-    for i, file_path in enumerate(files_to_upload, 1):
-        available_releases = release_mapper.get_available_releases()
-
-        filename = file_path.name
-
-        print(f"[{i}/{total_files}] Processing file: {filename}")
-
-        release = release_mapper.get_release_for_asset(filename)
-
-        if release:
-            if args.overwrite:
-                print(f"  -> Overwriting '{filename}' in release '{release}'...")
-                upload_asset(release, file_path, clobber=True)
-                overwritten_count += 1
-            else:
-                print(f"  -> Skipping '{filename}', it already exists in release '{release}'.")
-                skipped_count += 1
-
-            continue
-
-        if len(available_releases) == 0:
-            if not args.create_extra_releases:
-                print(f"Error: All existing releases are full. No space to upload '{filename}'.", file=sys.stderr)
-                sys.exit(1)
-            else:
-                next_num = get_next_num(release_map)
-                new_release = create_release(next_num, args.release)
-                release_mapper.add_release(new_release)
-                available_releases.append(new_release)
-
-        upload_target = available_releases[0]
-        print(f"  -> Uploading '{filename}' to '{upload_target}'...")
-        upload_asset(upload_target, file_path)
-        release_mapper.add_asset(filename, upload_target)
-        newly_uploaded_count += 1
-
-    print("Upload process complete.")
-    print()
-    print("--- Summary ---")
-    print(f"Total files:           {total_files}")
-    print(f"Files newly uploaded:  {newly_uploaded_count}")
-    print(f"Files skipped:         {skipped_count}")
-    print(f"Files overwritten:     {overwritten_count}")
-
-
 
 def upload_asset(release, file_path, clobber=False):
     command = ["gh", "release", "upload", release, str(file_path)]
@@ -242,6 +111,109 @@ def upload_asset(release, file_path, clobber=False):
     except subprocess.CalledProcessError as e:
         print(f"Error uploading asset: {e.stderr}", file=sys.stderr)
 
+def cli():
+    try:
+        parser = argparse.ArgumentParser(
+            description="Upload files to a GitHub release, skipping existing files.",
+            formatter_class=argparse.RawTextHelpFormatter,
+        )
+        parser.add_argument("--release", '-r', help="The git tag of the release to upload to.")
+        parser.add_argument("--folder", '-d', help="The local folder containing the files to upload.", type=Path)
+        parser.add_argument("--extension", '-e', action='append', help="The extension of the files to upload.")
+        parser.add_argument("--create-extra-releases", "-x", action="store_true", help="Create extra releases if needed.")
+        parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            help="Allow overwriting existing assets.",
+        )
+        args = parser.parse_args()
+
+        if not command_exists("gh"):
+            raise CliError("Error: gh command-line tool is not installed. Please install it to continue.")
+
+        if not args.folder.is_dir():
+            raise CliError(f"Error: Folder '{args.folder}' not found.")
+
+        print(f"Fetching existing assets for releases matching pattern '{args.release}(-extra[0-9]+)?'...")
+
+        release_map = get_release_map(args.release)
+        releases_to_process = list(release_map.values())
+
+        if not releases_to_process:
+            raise CliError(f"Error: No releases found matching pattern '{args.release}(-extra[0-9]+)?'.")
+
+        if args.release not in releases_to_process:
+            raise CliError(f"Error: Specified main release '{args.release}' not found among fetched releases.")
+
+        print(f"Found releases: {', '.join(releases_to_process)}")
+
+        release_mapper = ReleaseMapper(args.release)
+
+        for rel in releases_to_process:
+            release_mapper.add_release(args.release)
+            print(f"Fetching assets from release: {rel}")
+            assets = get_asset_names(rel)
+            for asset in assets:
+                release_mapper.add_asset(asset, rel)
+
+        print(f"Starting upload process from folder '{args.folder}'...")
+
+        files_to_upload = []
+        for ext in args.extension or []:
+            files_to_upload += sorted(list(args.folder.glob(f"*{ext}")))
+
+        total_files = len(files_to_upload)
+        newly_uploaded_count = 0
+        skipped_count = 0
+        overwritten_count = 0
+
+        for i, file_path in enumerate(files_to_upload, 1):
+            available_releases = release_mapper.get_available_releases()
+
+            filename = file_path.name
+
+            print(f"[{i}/{total_files}] Processing file: {filename}")
+
+            release = release_mapper.get_release_for_asset(filename)
+
+            if release:
+                if args.overwrite:
+                    print(f"  -> Overwriting '{filename}' in release '{release}'...")
+                    upload_asset(release, file_path, clobber=True)
+                    overwritten_count += 1
+                else:
+                    print(f"  -> Skipping '{filename}', it already exists in release '{release}'.")
+                    skipped_count += 1
+
+                continue
+
+            if len(available_releases) == 0:
+                if not args.create_extra_releases:
+                    raise CliError(f"Error: All existing releases are full. No space to upload '{filename}'.")
+                else:
+                    next_num = get_next_num(release_map)
+                    new_release = create_release(next_num, args.release)
+                    release_mapper.add_release(new_release)
+                    available_releases.append(new_release)
+
+            upload_target = available_releases[0]
+            print(f"  -> Uploading '{filename}' to '{upload_target}'...")
+            upload_asset(upload_target, file_path)
+            release_mapper.add_asset(filename, upload_target)
+            newly_uploaded_count += 1
+
+        print("Upload process complete.")
+        print()
+        print("--- Summary ---")
+        print(f"Total files:           {total_files}")
+        print(f"Files newly uploaded:  {newly_uploaded_count}")
+        print(f"Files skipped:         {skipped_count}")
+        print(f"Files overwritten:     {overwritten_count}")
+
+        return 0
+    except CliError as e:
+        print(e, file=sys.stderr)
+        return 1
 
 if __name__ == "__main__":
-    cli()
+    sys.exit(cli())

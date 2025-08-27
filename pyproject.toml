@@ -16,6 +16,7 @@ repository = "https://github.com/ramSeraph/release_tools.git"
 [project.scripts]
 generate-lists = "release_tools.generate_lists:cli"
 upload-to-release = "release_tools.upload_to_release:cli"
+delete-from-release = "release_tools.delete_from_release:cli"
 
 [build-system]
 requires = [
