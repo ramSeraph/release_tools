@@ -195,6 +195,7 @@ def cli():
                     new_release = create_release(next_num, args.release)
                     release_mapper.add_release(new_release)
                     available_releases.append(new_release)
+                    release_map[next_num] = new_release
 
             upload_target = available_releases[0]
             print(f"  -> Uploading '{filename}' to '{upload_target}'...")
