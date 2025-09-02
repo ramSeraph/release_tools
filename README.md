@@ -8,6 +8,7 @@ This project provides a set of tools to manage publishing a large number of file
 
 - **Generate file lists:** Create a CSV file containing a list of all files in a GitHub release.
 - **Upload files to a release:** Upload files from a local directory to a GitHub release, with an option to overwrite existing files.
+- **Delete files from a release:** Delete specified files from a release and its supplementary releases.
 
 ## Installation
 
@@ -21,6 +22,7 @@ This will install the `gh_release_tools` package and make the following command-
 
 - `generate-lists`
 - `upload-to-release`
+- `delete-from-release`
 
 ## Usage
 
@@ -85,3 +87,27 @@ This command will upload all `.zip` files from the `/path/to/files` directory to
 ```bash
 upload-to-release --release v1.0.0 --folder /path/to/files --extension .zip --overwrite
 ```
+
+### `delete-from-release`
+
+This tool deletes specified files from a GitHub release and its associated `-extra` releases. You can provide a list of files to delete either as command-line arguments or in a separate text file.
+
+**Usage:**
+
+```bash
+delete-from-release --release <tag> [--file-list <file>] [file1 file2 ...]
+```
+
+**Arguments:**
+
+- `--release`, `-r`: The base name of the GitHub release (e.g., `v1.0.0`).
+- `--file-list`, `-f`: (Optional) Path to a text file with a list of files to delete (one file per line).
+- `files`: (Optional) Space-separated list of file names to delete.
+
+**Example:**
+
+```bash
+delete-from-release --release v1.0.0 --file-list files_to_delete.txt my_file.zip
+```
+
+This command will delete the files listed in `files_to_delete.txt` and `my_file.zip` from the `v1.0.0` release and any releases named `v1.0.0-extra<number>`.
