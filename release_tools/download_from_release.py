@@ -21,6 +21,7 @@ def cli():
     parser.add_argument('--release', '-r', required=True, help='The base name of the release.')
     parser.add_argument('--file-list', '-f', type=Path, help='Path to a text file with a list of files to download (one file per line).')
     parser.add_argument('--output-dir', '-d', type=Path, help='The directory to save the downloaded files. If not provided, files are downloaded to the current directory.')
+    parser.add_argument('--skip-existing', action='store_true', help='Skip downloading files that already exist in the output directory.')
     parser.add_argument('files', nargs='*', help='File names to download.')
     args = parser.parse_args()
 
@@ -72,8 +73,15 @@ def cli():
 
     downloaded_assets = set()
     not_found_assets = set()
+    skipped_assets = set()
 
     for asset in sorted(list(files_to_download)):
+        output_file = (args.output_dir or Path('.')) / asset
+        if args.skip_existing and output_file.exists():
+            print(f"Skipping existing asset '{asset}'")
+            skipped_assets.add(asset)
+            continue
+
         release = asset_to_release_map.get(asset)
         if release:
             try:
@@ -88,11 +96,13 @@ def cli():
 
     total_count = len(files_to_download)
     downloaded_count = len(downloaded_assets)
+    skipped_count = len(skipped_assets)
     failed_count = len(not_found_assets)
 
     print("--- Download Summary ---")
     print(f"Total files requested for download: {total_count}")
     print(f"Successfully downloaded files: {downloaded_count}")
+    print(f"Skipped existing files: {skipped_count}")
     print(f"Files not found or failed to download: {failed_count}")
     
     if failed_count > 0:

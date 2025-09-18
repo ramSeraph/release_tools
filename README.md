@@ -23,6 +23,7 @@ This will install the `gh_release_tools` package and make the following command-
 - `generate-lists`
 - `upload-to-release`
 - `delete-from-release`
+- `download-from-release`
 
 ## Usage
 
@@ -33,6 +34,7 @@ It is recommended to run the tools using `uvx` to avoid dependency conflicts wit
 ```bash
 uvx --from gh_release_tools generate-lists --release <tag> --extension <extension>
 uvx --from gh_release_tools upload-to-release --release <tag> --folder <folder> --extension <extension> [--overwrite] [--create-extra-releases]
+uvx --from gh_release_tools download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [file1 file2 ...]
 ```
 
 ### `generate-lists`
@@ -111,3 +113,34 @@ delete-from-release --release v1.0.0 --file-list files_to_delete.txt my_file.zip
 ```
 
 This command will delete the files listed in `files_to_delete.txt` and `my_file.zip` from the `v1.0.0` release and any releases named `v1.0.0-extra<number>`.
+
+### `download-from-release`
+
+This tool downloads specified files from a GitHub release and its associated `-extra` releases.
+
+**Usage:**
+
+```bash
+download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [file1 file2 ...]
+```
+
+**Arguments:**
+
+- `--release`, `-r`: The base name of the GitHub release (e.g., `v1.0.0`).
+- `--file-list`, `-f`: (Optional) Path to a text file with a list of files to download (one file per line).
+- `--output-dir`, `-d`: (Optional) The directory to save the downloaded files. If not provided, files are downloaded to the current directory.
+- `--skip-existing`: (Optional) Skip downloading files that already exist in the output directory.
+- `files`: (Optional) Space-separated list of file names to download.
+
+**Example:**
+
+```bash
+download-from-release --release v1.0.0 --file-list files_to_download.txt --output-dir /path/to/downloads
+```
+
+This command will download the files listed in `files_to_download.txt` from the `v1.0.0` release and any releases named `v1.0.0-extra<number>` into the `/path/to/downloads` directory.
+
+```bash
+download-from-release --release v1.0.0 my_file.zip --skip-existing
+```
+This command will download `my_file.zip` to the current directory, but only if it doesn't already exist.
