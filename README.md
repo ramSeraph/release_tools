@@ -44,13 +44,14 @@ This tool generates a CSV file named `listing_files.csv` containing a list of as
 **Usage:**
 
 ```bash
-generate-lists --release <tag> --extension <ext1> [--extension <ext2> ...]
+generate-lists --release <tag> --extension <ext1> [--extension <ext2> ...] [--repo <owner/repo>]
 ```
 
 **Arguments:**
 
 - `--release`, `-r`: The base name of the GitHub release (e.g., `v1.0.0`).
 - `--extension`, `-e`: The file extension of the assets to include in the list (e.g., `.zip`). This argument can be specified multiple times for different extensions.
+- `--repo`, `-g`: (Optional) The GitHub repository in the format `owner/repo`. If not provided, it will be inferred from the current directory.
 
 **Example:**
 
@@ -67,7 +68,7 @@ This tool uploads files from a local folder to a GitHub release. It can be confi
 **Usage:**
 
 ```bash
-upload-to-release --release <tag> --folder <folder> --extension <ext1> [--extension <ext2> ...] [--overwrite] [--create-extra-releases]
+upload-to-release --release <tag> --folder <folder> --extension <ext1> [--extension <ext2> ...] [--overwrite] [--create-extra-releases] [--repo <owner/repo>]
 ```
 
 **Arguments:**
@@ -77,6 +78,7 @@ upload-to-release --release <tag> --folder <folder> --extension <ext1> [--extens
 - `--extension`, `-e`: The file extension of the files to upload (e.g., `.zip`). This argument can be specified multiple times.
 - `--overwrite`: (Optional) Overwrite existing assets in the release.
 - `--create-extra-releases`, `-x`: (Optional) Create supplementary releases if the main release is full.
+- `--repo`, `-g`: (Optional) The GitHub repository in the format `owner/repo`. If not provided, it will be inferred from the current directory.
 
 **Example:**
 
@@ -97,7 +99,7 @@ This tool deletes specified files from a GitHub release and its associated `-ext
 **Usage:**
 
 ```bash
-delete-from-release --release <tag> [--file-list <file>] [file1 file2 ...]
+delete-from-release --release <tag> [--file-list <file>] [--repo <owner/repo>] [file1 file2 ...]
 ```
 
 **Arguments:**
@@ -105,6 +107,7 @@ delete-from-release --release <tag> [--file-list <file>] [file1 file2 ...]
 - `--release`, `-r`: The base name of the GitHub release (e.g., `v1.0.0`).
 - `--file-list`, `-f`: (Optional) Path to a text file with a list of files to delete (one file per line).
 - `files`: (Optional) Space-separated list of file names to delete.
+- `--repo`, `-g`: (Optional) The GitHub repository in the format `owner/repo`. If not provided, it will be inferred from the current directory.
 
 **Example:**
 
@@ -121,7 +124,7 @@ This tool downloads specified files from a GitHub release and its associated `-e
 **Usage:**
 
 ```bash
-download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [file1 file2 ...]
+download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [--repo <owner/repo>] [file1 file2 ...]
 ```
 
 **Arguments:**
@@ -131,6 +134,7 @@ download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] 
 - `--output-dir`, `-d`: (Optional) The directory to save the downloaded files. If not provided, files are downloaded to the current directory.
 - `--skip-existing`: (Optional) Skip downloading files that already exist in the output directory.
 - `files`: (Optional) Space-separated list of file names to download.
+- `--repo`, `-g`: (Optional) The GitHub repository in the format `owner/repo`. If not provided, it will be inferred from the current directory.
 
 **Example:**
 

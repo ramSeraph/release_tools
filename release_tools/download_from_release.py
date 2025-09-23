@@ -6,18 +6,19 @@ from pathlib import Path
 from .utils import command_exists, get_asset_names, get_release_map, run_command
 
 
-def download_asset(release, asset_name, output_dir=None):
+def download_asset(release, asset_name, output_dir=None, repo=None):
     """Download an asset from a release."""
     print(f"Downloading asset '{asset_name}' from release '{release}'")
     command = ['gh', 'release', 'download', release, '-p', asset_name]
     if output_dir:
         command.extend(['--dir', str(output_dir)])
-    run_command(command)
+    run_command(command, repo=repo)
 
 
 def cli():
     """Main function to download files from a release."""
     parser = argparse.ArgumentParser(description='Download files from a GitHub release and its supplementary releases.')
+    parser.add_argument('--repo', '-g', help='The GitHub repository in the format \'owner/repo\'. If not provided, it will be inferred from the current directory.')
     parser.add_argument('--release', '-r', required=True, help='The base name of the release.')
     parser.add_argument('--file-list', '-f', type=Path, help='Path to a text file with a list of files to download (one file per line).')
     parser.add_argument('--output-dir', '-d', type=Path, help='The directory to save the downloaded files. If not provided, files are downloaded to the current directory.')
@@ -52,7 +53,7 @@ def cli():
         return 0
 
     print("Getting release list")
-    release_map = get_release_map(args.release)
+    release_map = get_release_map(args.release, repo=args.repo)
     
     if not release_map:
         print("No releases found to process.", file=sys.stderr)
@@ -66,7 +67,7 @@ def cli():
     asset_to_release_map = {}
     for release in releases_to_process:
         print(f"Fetching assets from release: {release}")
-        assets = get_asset_names(release)
+        assets = get_asset_names(release, repo=args.repo)
         for asset in assets:
             if asset in files_to_download:
                 asset_to_release_map[asset] = release
@@ -85,7 +86,7 @@ def cli():
         release = asset_to_release_map.get(asset)
         if release:
             try:
-                download_asset(release, asset, args.output_dir)
+                download_asset(release, asset, args.output_dir, repo=args.repo)
                 downloaded_assets.add(asset)
             except Exception as e:
                 print(f"Failed to download {asset} from {release}: {e}", file=sys.stderr)
@@ -109,7 +110,3 @@ def cli():
         return 1
     
     return 0
-
-
-if __name__ == '__main__':
-    sys.exit(cli())

@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .utils import command_exists, get_release_map, get_asset_names
+from .utils import command_exists, get_release_map, get_asset_names, get_repo_name_from_gh
 
 class CliError(Exception):
     pass
@@ -55,61 +55,43 @@ def get_next_num(release_map):
 
     return nums[-1] + 1
 
-def get_repo_name():
-    try:
-        result = subprocess.run(
-            ["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        raise CliError(f"Error getting repository name: {e.stderr}")
 
-def get_release_title(tag):
-    try:
-        result = subprocess.run(
-            ["gh", "release", "view", tag, "--json", "name", "-q", ".name"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        raise CliError(f"Error getting release title for tag {tag}: {e.stderr}")
 
-def create_release(next_num, main_tag):
+def get_release_title(tag, repo=None):
+    try:
+        cmd = ["gh", "release", "view", tag, "--json", "name", "-q", ".name"]
+        result = run_command(cmd, repo=repo)
+        return result.strip()
+    except Exception as e:
+        raise CliError(f"Error getting release title for tag {tag}: {e}")
+
+def create_release(next_num, main_tag, repo=None):
     new_release = f"{main_tag}-extra{next_num}"
     print(f"Creating new release '{new_release}'...")
-    repo_name = get_repo_name()
-    main_release_title = get_release_title(main_tag)
+    repo_name = get_repo_name_from_gh(repo)
+    main_release_title = get_release_title(main_tag, repo=repo)
     main_release_url = f"https://github.com/{repo_name}/releases/tag/{main_tag}"
 
     new_release_title = f"{main_release_title} Supplementary{next_num}"
     listing_files_url = f"https://github.com/{repo_name}/releases/download/{main_tag}/listing_files.csv"
 
     try:
-        subprocess.run(
-            ["gh", "release", "create", new_release, "--target", "main", "--title", new_release_title, "--notes", f"Extension of [{main_tag}]({main_release_url})\n\n List of files and their sizes is at [listing_files.csv]({listing_files_url})"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        cmd = ["gh", "release", "create", new_release, "--target", "main", "--title", new_release_title, "--notes", f"Extension of [{main_tag}]({main_release_url})\n\n List of files and their sizes is at [listing_files.csv]({listing_files_url})"]
+        run_command(cmd, repo=repo)
         print(f"Created release: {new_release}")
-    except subprocess.CalledProcessError as e:
-        raise CliError(f"Error creating release: {e.stderr}")
+    except Exception as e:
+        raise CliError(f"Error creating release: {e}")
 
     return new_release
 
-def upload_asset(release, file_path, clobber=False):
+def upload_asset(release, file_path, clobber=False, repo=None):
     command = ["gh", "release", "upload", release, str(file_path)]
     if clobber:
         command.append("--clobber")
     try:
-        subprocess.run(command, check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error uploading asset: {e.stderr}", file=sys.stderr)
+        run_command(command, repo=repo)
+    except Exception as e:
+        print(f"Error uploading asset: {e}", file=sys.stderr)
 
 def cli():
     try:
@@ -117,6 +99,7 @@ def cli():
             description="Upload files to a GitHub release, skipping existing files.",
             formatter_class=argparse.RawTextHelpFormatter,
         )
+        parser.add_argument('--repo', '-g', help='The GitHub repository in the format 'owner/repo'. If not provided, it will be inferred from the current directory.')
         parser.add_argument("--release", '-r', help="The git tag of the release to upload to.")
         parser.add_argument("--folder", '-d', help="The local folder containing the files to upload.", type=Path)
         parser.add_argument("--extension", '-e', action='append', help="The extension of the files to upload.")
@@ -136,7 +119,7 @@ def cli():
 
         print(f"Fetching existing assets for releases matching pattern '{args.release}(-extra[0-9]+)?'...")
 
-        release_map = get_release_map(args.release)
+        release_map = get_release_map(args.release, repo=args.repo)
         releases_to_process = list(release_map.values())
 
         if not releases_to_process:
@@ -152,7 +135,7 @@ def cli():
         for rel in releases_to_process:
             release_mapper.add_release(args.release)
             print(f"Fetching assets from release: {rel}")
-            assets = get_asset_names(rel)
+            assets = get_asset_names(rel, repo=args.repo)
             for asset in assets:
                 release_mapper.add_asset(asset, rel)
 
@@ -179,7 +162,7 @@ def cli():
             if release:
                 if args.overwrite:
                     print(f"  -> Overwriting '{filename}' in release '{release}'...")
-                    upload_asset(release, file_path, clobber=True)
+                    upload_asset(release, file_path, clobber=True, repo=args.repo)
                     overwritten_count += 1
                 else:
                     print(f"  -> Skipping '{filename}', it already exists in release '{release}'.")
@@ -192,14 +175,14 @@ def cli():
                     raise CliError(f"Error: All existing releases are full. No space to upload '{filename}'.")
                 else:
                     next_num = get_next_num(release_map)
-                    new_release = create_release(next_num, args.release)
+                    new_release = create_release(next_num, args.release, repo=args.repo)
                     release_mapper.add_release(new_release)
                     available_releases.append(new_release)
                     release_map[next_num] = new_release
 
             upload_target = available_releases[0]
             print(f"  -> Uploading '{filename}' to '{upload_target}'...")
-            upload_asset(upload_target, file_path)
+            upload_asset(upload_target, file_path, repo=args.repo)
             release_mapper.add_asset(filename, upload_target)
             newly_uploaded_count += 1
 

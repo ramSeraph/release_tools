@@ -5,14 +5,15 @@ from pathlib import Path
 
 from .utils import command_exists, get_asset_names, get_release_map, run_command
 
-def delete_asset(release, asset_name):
+def delete_asset(release, asset_name, repo=None):
     """Delete an asset from a release."""
     print(f"Deleting asset '{asset_name}' from release '{release}'")
-    run_command(['gh', 'release', 'delete-asset', release, asset_name, '-y'])
+    run_command(['gh', 'release', 'delete-asset', release, asset_name, '-y'], repo=repo)
 
 def cli():
     """Main function to delete files from a release."""
     parser = argparse.ArgumentParser(description='Delete files from a GitHub release and its supplementary releases.')
+    parser.add_argument('--repo', '-g', help='The GitHub repository in the format 'owner/repo'. If not provided, it will be inferred from the current directory.')
     parser.add_argument('--release', '-r', required=True, help='The base name of the release.')
     parser.add_argument('--file-list', '-f', type=Path, help='Path to a text file with a list of files to delete (one file per line).')
     parser.add_argument('files', nargs='*', help='File names to delete.')
@@ -42,7 +43,7 @@ def cli():
         return 0
 
     print("Getting release list")
-    release_map = get_release_map(args.release)
+    release_map = get_release_map(args.release, repo=args.repo)
     
     if not release_map:
         print("No releases found to process.", file=sys.stderr)
@@ -56,7 +57,7 @@ def cli():
     deleted_assets = set()
     for release in releases_to_process:
         print(f"Processing release: {release}")
-        assets = get_asset_names(release)
+        assets = get_asset_names(release, repo=args.repo)
         
         assets_set = set(assets)
         assets_to_delete_from_release = files_to_delete.intersection(assets_set)
@@ -66,7 +67,7 @@ def cli():
             continue
 
         for asset in sorted(list(assets_to_delete_from_release)):
-            if delete_asset(release, asset):
+            if delete_asset(release, asset, repo=args.repo):
                 deleted_assets.add(asset)
 
     total_count = len(files_to_delete)

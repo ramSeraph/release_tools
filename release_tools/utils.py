@@ -4,8 +4,11 @@ import subprocess
 def command_exists(cmd):
     return subprocess.run(f"command -v {cmd}", shell=True, capture_output=True, text=True).returncode == 0
 
-def run_command(cmd):
+def run_command(cmd, repo=None):
     """Run a shell command and return its output."""
+    if repo and cmd[0] == 'gh':
+        cmd = ['gh', '-R', repo] + cmd[1:]
+
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return result.stdout.strip()
@@ -17,8 +20,8 @@ def run_command(cmd):
         print(e.stdout)
         raise Exception(f"Command '{' '.join(cmd)}' failed with exit code {e.returncode}")
 
-def get_release_map(tag):
-    output = run_command(["gh", "release", "list", "--json", "tagName", "-q", ".[].tagName"])
+def get_release_map(tag, repo=None):
+    output = run_command(["gh", "release", "list", "--json", "tagName", "-q", ".[].tagName"], repo=repo)
 
     all_releases = output.strip().split('\n')
     pattern = re.compile(f"^{re.escape(tag)}(-extra(?P<num>[0-9]+))?$")
@@ -41,7 +44,18 @@ def get_release_map(tag):
 
     return rel_map
 
-def get_asset_names(release):
+def get_repo_name_from_gh(repo=None):
+    if repo:
+        return repo
+    try:
+        result = run_command(
+            ["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"], repo=repo
+        )
+        return result.strip()
+    except Exception as e:
+        raise Exception(f"Error getting repository name: {e}")
+
+def get_asset_names(release, repo=None):
     """Get all asset names for a given release."""
     output = run_command([
         'gh',
@@ -52,7 +66,7 @@ def get_asset_names(release):
         'assets',
         '-q',
         '.assets[].name'
-    ])
+    ], repo=repo)
     output = output.strip()
     if not output:
         return []

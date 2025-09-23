@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .utils import command_exists, get_release_map, run_command
 
-def get_assets(release, ext):
+def get_assets(release, ext, repo=None):
     """Get all assets with a given extension for a given release."""
     output = run_command([
         'gh',
@@ -17,13 +17,14 @@ def get_assets(release, ext):
         'assets',
         '-q',
         f'.assets[] | select(.name | endswith("{ext}")) | "\\(.name),\\(.size),\\(.url)"'
-    ])
+    ], repo=repo)
     return output.strip()
 
 
 def cli():
     """Main function to generate file lists and upload to release."""
     parser = argparse.ArgumentParser(description='Generate file lists and upload to a GitHub release.')
+    parser.add_argument('--repo', '-g', help='The GitHub repository in the format \'owner/repo\'. If not provided, it will be inferred from the current directory.')
     parser.add_argument('--release', '-r', required=True, help='The base name of the release.')
     parser.add_argument('--extension', '-e', action='append', help='File extension to filter assets by.')
     args = parser.parse_args()
@@ -37,7 +38,7 @@ def cli():
         return 1
 
     print("Getting file list")
-    release_map = get_release_map(args.release)
+    release_map = get_release_map(args.release, repo=args.repo)
     releases_to_process = list(release_map.values())
     
     if not releases_to_process:
@@ -50,7 +51,7 @@ def cli():
     for release in releases_to_process:
         print(f"Processing release: {release}")
         for ext in args.extension:
-            assets = get_assets(release, ext)
+            assets = get_assets(release, ext, repo=args.repo)
             if assets:
                 # Filter out empty strings that can result from split('\n')
                 all_assets.extend([line.strip() for line in assets.split('\n') if line.strip()])
@@ -68,7 +69,7 @@ def cli():
             csv_writer.writerow(asset_line.split(',', 2))
 
     print(f"Uploading {csv_file} to release {args.release}")
-    run_command(['gh', 'release', 'upload', args.release, str(csv_file), '--clobber'])
+    run_command(['gh', 'release', 'upload', args.release, str(csv_file), '--clobber'], repo=args.repo)
 
     csv_file.unlink()
             
