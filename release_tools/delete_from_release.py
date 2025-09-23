@@ -1,5 +1,4 @@
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
@@ -13,7 +12,7 @@ def delete_asset(release, asset_name, repo=None):
 def cli():
     """Main function to delete files from a release."""
     parser = argparse.ArgumentParser(description='Delete files from a GitHub release and its supplementary releases.')
-    parser.add_argument('--repo', '-g', help='The GitHub repository in the format 'owner/repo'. If not provided, it will be inferred from the current directory.')
+    parser.add_argument('--repo', '-g', help='The GitHub repository in the format \'owner/repo\'. If not provided, it will be inferred from the current directory.')
     parser.add_argument('--release', '-r', required=True, help='The base name of the release.')
     parser.add_argument('--file-list', '-f', type=Path, help='Path to a text file with a list of files to delete (one file per line).')
     parser.add_argument('files', nargs='*', help='File names to delete.')

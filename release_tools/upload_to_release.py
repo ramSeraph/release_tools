@@ -1,9 +1,8 @@
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
-from .utils import command_exists, get_release_map, get_asset_names, get_repo_name_from_gh
+from .utils import command_exists, get_release_map, get_asset_names, get_repo_name_from_gh, run_command
 
 class CliError(Exception):
     pass
@@ -99,7 +98,7 @@ def cli():
             description="Upload files to a GitHub release, skipping existing files.",
             formatter_class=argparse.RawTextHelpFormatter,
         )
-        parser.add_argument('--repo', '-g', help='The GitHub repository in the format 'owner/repo'. If not provided, it will be inferred from the current directory.')
+        parser.add_argument('--repo', '-g', help='The GitHub repository in the format \'owner/repo\'. If not provided, it will be inferred from the current directory.')
         parser.add_argument("--release", '-r', help="The git tag of the release to upload to.")
         parser.add_argument("--folder", '-d', help="The local folder containing the files to upload.", type=Path)
         parser.add_argument("--extension", '-e', action='append', help="The extension of the files to upload.")
