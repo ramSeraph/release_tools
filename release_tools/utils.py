@@ -21,7 +21,7 @@ def run_command(cmd, repo=None):
         raise Exception(f"Command '{' '.join(cmd)}' failed with exit code {e.returncode}")
 
 def get_release_map(tag, repo=None):
-    output = run_command(["gh", "release", "list", "--json", "tagName", "-q", ".[].tagName"], repo=repo)
+    output = run_command(["gh", "release", "list", "--json", "tagName", "-q", ".[].tagName", '-L', '500'], repo=repo)
 
     all_releases = output.strip().split('\n')
     pattern = re.compile(f"^{re.escape(tag)}(-extra(?P<num>[0-9]+))?$")
