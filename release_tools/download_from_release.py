@@ -15,7 +15,7 @@ def download_asset(release, asset_name, output_dir=None, repo=None):
     run_command(command, repo=repo)
 
 
-def cli():
+def main(argv):
     """Main function to download files from a release."""
     parser = argparse.ArgumentParser(description='Download files from a GitHub release and its supplementary releases.')
     parser.add_argument('--repo', '-g', help='The GitHub repository in the format \'owner/repo\'. If not provided, it will be inferred from the current directory.')
@@ -24,7 +24,7 @@ def cli():
     parser.add_argument('--output-dir', '-d', type=Path, help='The directory to save the downloaded files. If not provided, files are downloaded to the current directory.')
     parser.add_argument('--skip-existing', action='store_true', help='Skip downloading files that already exist in the output directory.')
     parser.add_argument('files', nargs='*', help='File names to download.')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if not command_exists("gh"):
         print("Error: gh command-line tool is not installed. Please install it to continue.", file=sys.stderr)
@@ -110,3 +110,6 @@ def cli():
         return 1
     
     return 0
+
+def cli():
+    return main(sys.argv[1:])
