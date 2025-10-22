@@ -63,8 +63,9 @@ def main(argv):
         
     releases_to_process = list(release_map.values())
 
+    files_to_download_count = len(files_to_download)
     print(f"Will process releases: {releases_to_process}")
-    print(f"Files to download: {sorted(list(files_to_download))}")
+    print(f"Files to download: {', '.join(sorted(list(files_to_download))[:5])}{'...' if files_to_download_count > 5 else ''} (total {files_to_download_count} files)")
 
     asset_to_release_map = {}
     release_to_assets_map = {}
