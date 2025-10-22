@@ -82,20 +82,28 @@ def main(argv):
     skipped_assets = set()
     failed_assets = set()
 
+    for asset in asset_to_release_map.keys():
+        output_file = output_dir / asset
+        if args.skip_existing and output_file.exists():
+            skipped_assets.add(asset)
+
+    skipped_count = len(skipped_assets)
+    if skipped_count > 0:
+        print(f"Skipping {skipped_count} files that already exist: {', '.join(list(skipped_assets)[:5])}{'...' if skipped_count > 5 else ''}")
+
+
     found_assets = set(asset_to_release_map.keys())
     not_found_assets = files_to_download - found_assets
     
     for asset in sorted(list(not_found_assets)):
         print(f"Asset '{asset}' not found in any of the releases.", file=sys.stderr)
 
+    to_download_count = len(files_to_download) - len(skipped_assets) - len(not_found_assets)
+
     for release, assets in release_to_assets_map.items():
         assets_to_download_for_release = []
         for asset in sorted(assets):
-            output_file = output_dir / asset
-            if args.skip_existing and output_file.exists():
-                print(f"Skipping existing asset '{asset}'")
-                skipped_assets.add(asset)
-            else:
+            if asset not in skipped_assets:
                 assets_to_download_for_release.append(asset)
 
         if not assets_to_download_for_release:
@@ -107,6 +115,7 @@ def main(argv):
             try:
                 download_assets(release, batch, args.output_dir, repo=args.repo)
                 downloaded_assets.update(batch)
+                print(f"Downloaded {len(downloaded_assets)} of {to_download_count} files...")
             except Exception as e:
                 print(f"Failed to download a batch of {len(batch)} files from {release}: {e}", file=sys.stderr)
                 for asset in batch:

@@ -115,7 +115,7 @@ def cli():
             action="store_true",
             help="Allow overwriting existing assets.",
         )
-        parser.add_argument('--batch-size', '-b', type=int, default=50, help='The number of files to upload in a single batch. (default: 50)')
+        parser.add_argument('--batch-size', '-b', type=int, default=1, help='The number of files to upload in a single batch. (default: 50)')
         args = parser.parse_args()
 
         if not command_exists("gh"):
@@ -171,12 +171,14 @@ def cli():
                 files_for_new_upload.append(file_path)
         
         skipped_count = len(files_to_skip)
+        upload_count_target = total_files - skipped_count
         if skipped_count > 0:
             skipped_filenames = [f.name for f in files_to_skip]
             print(f"Skipping {skipped_count} files that already exist: {', '.join(skipped_filenames[:5])}{'...' if skipped_count > 5 else ''}")
 
         overwritten_assets = set()
         failed_uploads = set()
+        newly_uploaded_assets = set()
 
         for release, file_paths in files_to_overwrite.items():
             print(f"Overwriting {len(file_paths)} files in release '{release}'...")
@@ -186,6 +188,8 @@ def cli():
                 try:
                     upload_assets(release, batch, clobber=True, repo=args.repo)
                     overwritten_assets.update(p.name for p in batch)
+                    uploaded_count = len(overwritten_assets) + len(newly_uploaded_assets)
+                    print(f"Uploaded {uploaded_count} of {upload_count_target} files...")
                 except Exception:
                     failed_uploads.update(p.name for p in batch)
         
@@ -213,7 +217,6 @@ def cli():
             uploads_by_release.setdefault(upload_target, []).append(file_path)
             release_mapper.add_asset(filename, upload_target)
 
-        newly_uploaded_assets = set()
         for release, file_paths in uploads_by_release.items():
             batch_size = args.batch_size
             for i in range(0, len(file_paths), batch_size):
@@ -221,6 +224,8 @@ def cli():
                 try:
                     upload_assets(release, batch, repo=args.repo)
                     newly_uploaded_assets.update(p.name for p in batch)
+                    uploaded_count = len(overwritten_assets) + len(newly_uploaded_assets)
+                    print(f"Uploaded {uploaded_count} of {upload_count_target} files...")
                 except Exception:
                     failed_uploads.update(p.name for p in batch)
 
