@@ -83,14 +83,21 @@ def create_release(next_num, main_tag, repo=None):
 
     return new_release
 
-def upload_asset(release, file_path, clobber=False, repo=None):
-    command = ["gh", "release", "upload", release, str(file_path)]
+def upload_assets(release, file_paths, clobber=False, repo=None):
+    """Upload a list of assets to a release."""
+    command = ["gh", "release", "upload", release]
+    command.extend([str(p) for p in file_paths])
+
     if clobber:
         command.append("--clobber")
     try:
+        print(f"Uploading {len(file_paths)} asset(s) to release '{release}'...")
         run_command(command, repo=repo)
+        print(f"Successfully uploaded {len(file_paths)} assets.")
     except Exception as e:
-        print(f"Error uploading asset: {e}", file=sys.stderr)
+        print(f"Error uploading batch of {len(file_paths)} assets: {e}", file=sys.stderr)
+        raise
+
 
 def cli():
     try:
@@ -108,6 +115,7 @@ def cli():
             action="store_true",
             help="Allow overwriting existing assets.",
         )
+        parser.add_argument('--batch-size', '-b', type=int, default=50, help='The number of files to upload in a single batch. (default: 50)')
         args = parser.parse_args()
 
         if not command_exists("gh"):
@@ -132,7 +140,7 @@ def cli():
         release_mapper = ReleaseMapper(args.release)
 
         for rel in releases_to_process:
-            release_mapper.add_release(args.release)
+            release_mapper.add_release(rel)
             print(f"Fetching assets from release: {rel}")
             assets = get_asset_names(rel, repo=args.repo)
             for asset in assets:
@@ -140,58 +148,95 @@ def cli():
 
         print(f"Starting upload process from folder '{args.folder}'...")
 
-        files_to_upload = []
+        files_to_upload_paths = []
         for ext in args.extension or []:
-            files_to_upload += sorted(list(args.folder.glob(f"*{ext}")))
+            files_to_upload_paths += sorted(list(args.folder.glob(f"*{ext}")))
 
-        total_files = len(files_to_upload)
-        newly_uploaded_count = 0
-        skipped_count = 0
-        overwritten_count = 0
+        total_files = len(files_to_upload_paths)
+        
+        files_to_skip = []
+        files_to_overwrite = {}  # release -> list of file_paths
+        files_for_new_upload = []
 
-        for i, file_path in enumerate(files_to_upload, 1):
-            available_releases = release_mapper.get_available_releases()
-
+        for file_path in files_to_upload_paths:
             filename = file_path.name
-
-            print(f"[{i}/{total_files}] Processing file: {filename}")
-
             release = release_mapper.get_release_for_asset(filename)
 
             if release:
                 if args.overwrite:
-                    print(f"  -> Overwriting '{filename}' in release '{release}'...")
-                    upload_asset(release, file_path, clobber=True, repo=args.repo)
-                    overwritten_count += 1
+                    files_to_overwrite.setdefault(release, []).append(file_path)
                 else:
-                    print(f"  -> Skipping '{filename}', it already exists in release '{release}'.")
-                    skipped_count += 1
+                    files_to_skip.append(file_path)
+            else:
+                files_for_new_upload.append(file_path)
+        
+        skipped_count = len(files_to_skip)
+        if skipped_count > 0:
+            skipped_filenames = [f.name for f in files_to_skip]
+            print(f"Skipping {skipped_count} files that already exist: {', '.join(skipped_filenames[:5])}{'...' if skipped_count > 5 else ''}")
 
-                continue
+        overwritten_assets = set()
+        failed_uploads = set()
 
-            if len(available_releases) == 0:
-                if not args.create_extra_releases:
-                    raise CliError(f"Error: All existing releases are full. No space to upload '{filename}'.")
-                else:
+        for release, file_paths in files_to_overwrite.items():
+            print(f"Overwriting {len(file_paths)} files in release '{release}'...")
+            batch_size = args.batch_size
+            for i in range(0, len(file_paths), batch_size):
+                batch = file_paths[i:i + batch_size]
+                try:
+                    upload_assets(release, batch, clobber=True, repo=args.repo)
+                    overwritten_assets.update(p.name for p in batch)
+                except Exception:
+                    failed_uploads.update(p.name for p in batch)
+        
+        uploads_by_release = {}
+        
+        print(f"Processing {len(files_for_new_upload)} new files to upload...")
+        for i, file_path in enumerate(files_for_new_upload, 1):
+            filename = file_path.name
+            print(f"[{i}/{len(files_for_new_upload)}] Assigning release for: {filename}")
+            available_releases = release_mapper.get_available_releases()
+
+            if not available_releases:
+                if args.create_extra_releases:
                     next_num = get_next_num(release_map)
                     new_release = create_release(next_num, args.release, repo=args.repo)
                     release_mapper.add_release(new_release)
                     available_releases.append(new_release)
                     release_map[next_num] = new_release
+                else:
+                    print(f"Error: All existing releases are full. No space to upload '{filename}'. Skipping.", file=sys.stderr)
+                    failed_uploads.add(filename)
+                    continue
 
             upload_target = available_releases[0]
-            print(f"  -> Uploading '{filename}' to '{upload_target}'...")
-            upload_asset(upload_target, file_path, repo=args.repo)
+            uploads_by_release.setdefault(upload_target, []).append(file_path)
             release_mapper.add_asset(filename, upload_target)
-            newly_uploaded_count += 1
+
+        newly_uploaded_assets = set()
+        for release, file_paths in uploads_by_release.items():
+            batch_size = args.batch_size
+            for i in range(0, len(file_paths), batch_size):
+                batch = file_paths[i:i + batch_size]
+                try:
+                    upload_assets(release, batch, repo=args.repo)
+                    newly_uploaded_assets.update(p.name for p in batch)
+                except Exception:
+                    failed_uploads.update(p.name for p in batch)
+
 
         print("Upload process complete.")
         print()
         print("--- Summary ---")
-        print(f"Total files:           {total_files}")
-        print(f"Files newly uploaded:  {newly_uploaded_count}")
+        print(f"Total files processed: {total_files}")
+        print(f"Files newly uploaded:  {len(newly_uploaded_assets)}")
         print(f"Files skipped:         {skipped_count}")
-        print(f"Files overwritten:     {overwritten_count}")
+        print(f"Files overwritten:     {len(overwritten_assets)}")
+        print(f"Files failed to upload(possibly overestimated): {len(failed_uploads)}")
+
+        if len(failed_uploads) > 0:
+            print("Failed files:", ", ".join(sorted(list(failed_uploads))))
+            return 1
 
         return 0
     except CliError as e:

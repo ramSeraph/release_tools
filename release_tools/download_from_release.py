@@ -1,4 +1,3 @@
-
 import argparse
 import sys
 from pathlib import Path
@@ -6,10 +5,12 @@ from pathlib import Path
 from .utils import command_exists, get_asset_names, get_release_map, run_command
 
 
-def download_asset(release, asset_name, output_dir=None, repo=None):
-    """Download an asset from a release."""
-    print(f"Downloading asset '{asset_name}' from release '{release}'")
-    command = ['gh', 'release', 'download', release, '-p', asset_name]
+def download_assets(release, assets, output_dir=None, repo=None):
+    """Download a list of assets from a release."""
+    print(f"Downloading {len(assets)} asset(s) from release '{release}'")
+    command = ['gh', 'release', 'download', release]
+    for asset in assets:
+        command.extend(['-p', asset])
     if output_dir:
         command.extend(['--dir', str(output_dir)])
     run_command(command, repo=repo)
@@ -23,6 +24,7 @@ def main(argv):
     parser.add_argument('--file-list', '-f', type=Path, help='Path to a text file with a list of files to download (one file per line).')
     parser.add_argument('--output-dir', '-d', type=Path, help='The directory to save the downloaded files. If not provided, files are downloaded to the current directory.')
     parser.add_argument('--skip-existing', action='store_true', help='Skip downloading files that already exist in the output directory.')
+    parser.add_argument('--batch-size', '-b', type=int, default=1, help='The number of files to download in a single batch. (default: 50)')
     parser.add_argument('files', nargs='*', help='File names to download.')
     args = parser.parse_args(argv)
 
@@ -65,46 +67,65 @@ def main(argv):
     print(f"Files to download: {sorted(list(files_to_download))}")
 
     asset_to_release_map = {}
+    release_to_assets_map = {}
     for release in releases_to_process:
         print(f"Fetching assets from release: {release}")
         assets = get_asset_names(release, repo=args.repo)
         for asset in assets:
             if asset in files_to_download:
                 asset_to_release_map[asset] = release
+                release_to_assets_map.setdefault(release, []).append(asset)
+
+    output_dir = args.output_dir or Path('.')
 
     downloaded_assets = set()
-    not_found_assets = set()
     skipped_assets = set()
+    failed_assets = set()
 
-    for asset in sorted(list(files_to_download)):
-        output_file = (args.output_dir or Path('.')) / asset
-        if args.skip_existing and output_file.exists():
-            print(f"Skipping existing asset '{asset}'")
-            skipped_assets.add(asset)
+    found_assets = set(asset_to_release_map.keys())
+    not_found_assets = files_to_download - found_assets
+    
+    for asset in sorted(list(not_found_assets)):
+        print(f"Asset '{asset}' not found in any of the releases.", file=sys.stderr)
+
+    for release, assets in release_to_assets_map.items():
+        assets_to_download_for_release = []
+        for asset in sorted(assets):
+            output_file = output_dir / asset
+            if args.skip_existing and output_file.exists():
+                print(f"Skipping existing asset '{asset}'")
+                skipped_assets.add(asset)
+            else:
+                assets_to_download_for_release.append(asset)
+
+        if not assets_to_download_for_release:
             continue
 
-        release = asset_to_release_map.get(asset)
-        if release:
+        batch_size = args.batch_size
+        for i in range(0, len(assets_to_download_for_release), batch_size):
+            batch = assets_to_download_for_release[i:i+batch_size]
             try:
-                download_asset(release, asset, args.output_dir, repo=args.repo)
-                downloaded_assets.add(asset)
+                download_assets(release, batch, args.output_dir, repo=args.repo)
+                downloaded_assets.update(batch)
             except Exception as e:
-                print(f"Failed to download {asset} from {release}: {e}", file=sys.stderr)
-                not_found_assets.add(asset)
-        else:
-            print(f"Asset '{asset}' not found in any of the releases.", file=sys.stderr)
-            not_found_assets.add(asset)
+                print(f"Failed to download a batch of {len(batch)} files from {release}: {e}", file=sys.stderr)
+                for asset in batch:
+                    output_file = output_dir / asset
+                    if not output_file.exists():
+                        failed_assets.add(asset)
 
     total_count = len(files_to_download)
     downloaded_count = len(downloaded_assets)
     skipped_count = len(skipped_assets)
-    failed_count = len(not_found_assets)
+    not_found_count = len(not_found_assets)
+    failed_count = len(failed_assets)
 
     print("--- Download Summary ---")
     print(f"Total files requested for download: {total_count}")
     print(f"Successfully downloaded files: {downloaded_count}")
     print(f"Skipped existing files: {skipped_count}")
-    print(f"Files not found or failed to download: {failed_count}")
+    print(f"Files not found: {not_found_count}")
+    print(f"Files failed to download: {failed_count}")
     
     if failed_count > 0:
         return 1

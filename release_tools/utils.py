@@ -10,6 +10,7 @@ def run_command(cmd, repo=None):
         cmd = ['gh', '-R', repo] + cmd[1:]
 
     try:
+        print(f"Running command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:

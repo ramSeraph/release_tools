@@ -33,8 +33,8 @@ It is recommended to run the tools using `uvx` to avoid dependency conflicts wit
 
 ```bash
 uvx --from gh_release_tools generate-lists --release <tag> --extension <extension>
-uvx --from gh_release_tools upload-to-release --release <tag> --folder <folder> --extension <extension> [--overwrite] [--create-extra-releases]
-uvx --from gh_release_tools download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [file1 file2 ...]
+uvx --from gh_release_tools upload-to-release --release <tag> --folder <folder> --extension <extension> [--overwrite] [--create-extra-releases] [--batch-size <size>]
+uvx --from gh_release_tools download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [--batch-size <size>] [file1 file2 ...]
 ```
 
 ### `generate-lists`
@@ -68,7 +68,7 @@ This tool uploads files from a local folder to a GitHub release. It can be confi
 **Usage:**
 
 ```bash
-upload-to-release --release <tag> --folder <folder> --extension <ext1> [--extension <ext2> ...] [--overwrite] [--create-extra-releases] [--repo <owner/repo>]
+upload-to-release --release <tag> --folder <folder> --extension <ext1> [--extension <ext2> ...] [--overwrite] [--create-extra-releases] [--batch-size <size>] [--repo <owner/repo>]
 ```
 
 **Arguments:**
@@ -78,6 +78,7 @@ upload-to-release --release <tag> --folder <folder> --extension <ext1> [--extens
 - `--extension`, `-e`: The file extension of the files to upload (e.g., `.zip`). This argument can be specified multiple times.
 - `--overwrite`: (Optional) Overwrite existing assets in the release.
 - `--create-extra-releases`, `-x`: (Optional) Create supplementary releases if the main release is full.
+- `--batch-size`, `-b`: (Optional) The number of files to upload in a single batch. (default: 1)
 - `--repo`, `-g`: (Optional) The GitHub repository in the format `owner/repo`. If not provided, it will be inferred from the current directory.
 
 **Example:**
@@ -124,7 +125,7 @@ This tool downloads specified files from a GitHub release and its associated `-e
 **Usage:**
 
 ```bash
-download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [--repo <owner/repo>] [file1 file2 ...]
+download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] [--skip-existing] [--batch-size <size>] [--repo <owner/repo>] [file1 file2 ...]
 ```
 
 **Arguments:**
@@ -133,6 +134,7 @@ download-from-release --release <tag> [--file-list <file>] [--output-dir <dir>] 
 - `--file-list`, `-f`: (Optional) Path to a text file with a list of files to download (one file per line).
 - `--output-dir`, `-d`: (Optional) The directory to save the downloaded files. If not provided, files are downloaded to the current directory.
 - `--skip-existing`: (Optional) Skip downloading files that already exist in the output directory.
+- `--batch-size`, `-b`: (Optional) The number of files to download in a single batch. (default: 1)
 - `files`: (Optional) Space-separated list of file names to download.
 - `--repo`, `-g`: (Optional) The GitHub repository in the format `owner/repo`. If not provided, it will be inferred from the current directory.
 
