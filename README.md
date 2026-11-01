@@ -4,6 +4,8 @@
 
 This project provides a set of tools to manage publishing a large number of files using GitHub releases, particularly to overcome the 1000 file limit per release by creating supplementary releases. This assumes that `gh` (the GitHub CLI) is installed and configured on your system, as it is used to interact with GitHub releases.
 
+STAC index preparation and publication are maintained in [Indian Open Maps](https://github.com/ramSeraph/indianopenmaps/blob/main/python/README.md#raster-stac-indexes), through `iomaps admin stac` and `iomaps admin make-release`.
+
 ## Features
 
 - **Generate file lists:** Create a CSV file containing a list of all files in a GitHub release.
